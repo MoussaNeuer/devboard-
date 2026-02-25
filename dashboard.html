@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevBoard Pro - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Navigation -->
+        <nav class="dashboard-nav">
+            <div class="nav-brand">
+                <h2>📊 DevBoard Pro</h2>
+                <span class="brand-badge">v2.0</span>
+            </div>
+            
+            <div class="nav-user">
+                <div class="user-info">
+                    <span class="user-name" id="userInfo"></span>
+                    <span class="user-role" id="userRole"></span>
+                </div>
+                <button onclick="logout()" class="logout-btn">
+                    <span>🚪</span>
+                    <span>Déconnexion</span>
+                </button>
+                <button id="themeToggle" class="theme-btn-nav">🌙</button>
+            </div>
+        </nav>
+
+        <!-- Panneau d'administration -->
+        <div class="admin-panel">
+            <!-- Onglets -->
+            <div class="admin-tabs">
+                <button class="tab-btn active" data-tab="tasks">
+                    <span>📋</span>
+                    <span>Tâches</span>
+                </button>
+                <button class="tab-btn" data-tab="users">
+                    <span>👥</span>
+                    <span>Utilisateurs</span>
+                </button>
+                <button class="tab-btn" data-tab="logs">
+                    <span>📊</span>
+                    <span>Logs</span>
+                </button>
+                <button class="tab-btn" data-tab="settings">
+                    <span>⚙️</span>
+                    <span>Paramètres</span>
+                </button>
+            </div>
+
+            <!-- Onglet Tâches -->
+            <div class="tab-content active" id="tasks-tab">
+                <div class="tab-header">
+                    <h3>Gestion des tâches</h3>
+                    <div class="permission-badge" id="permissionBadge"></div>
+                </div>
+                
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Total</span>
+                        <span class="stat-value" id="totalTasks">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">En cours</span>
+                        <span class="stat-value" id="inProgress">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Terminées</span>
+                        <span class="stat-value" id="completed">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Complétion</span>
+                        <span class="stat-value" id="completionRate">0%</span>
+                    </div>
+                </div>
+
+                <!-- Formulaire ajout -->
+                <div class="add-task-section" id="addTaskSection">
+                    <div class="add-task-form">
+                        <input type="text" id="taskInput" placeholder="Nouvelle tâche..." maxlength="100">
+                        <button id="addTaskBtn" class="primary-btn">
+                            <span>➕</span>
+                            <span>Ajouter</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtres -->
+                <div class="filters-section">
+                    <button class="filter-btn active" data-filter="all">Tous</button>
+                    <button class="filter-btn" data-filter="inProgress">En cours</button>
+                    <button class="filter-btn" data-filter="completed">Terminés</button>
+                    <button class="filter-btn" data-filter="myTasks">Mes tâches</button>
+                </div>
+
+                <!-- Liste des tâches -->
+                <div class="tasks-container" id="tasksContainer">
+                    <!-- Tasks will be injected here -->
+                </div>
+            </div>
+
+            <!-- Onglet Utilisateurs -->
+            <div class="tab-content" id="users-tab">
+                <div class="tab-header">
+                    <h3>Gestion des utilisateurs</h3>
+                    <span class="online-count" id="onlineCount">👥 3 en ligne</span>
+                </div>
+                
+                <div class="users-grid" id="usersList">
+                    <!-- Users will be injected here -->
+                </div>
+
+                <div class="session-info">
+                    <h4>Sessions actives</h4>
+                    <div class="sessions-list" id="sessionsList">
+                        <!-- Sessions will be injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Onglet Logs -->
+            <div class="tab-content" id="logs-tab">
+                <div class="tab-header">
+                    <h3>Journal d'activité</h3>
+                    <button onclick="clearLogs()" class="clear-logs-btn" id="clearLogsBtn">🗑️ Effacer les logs</button>
+                </div>
+                
+                <div class="logs-filters">
+                    <button class="log-filter active" data-log-type="all">Tous</button>
+                    <button class="log-filter" data-log-type="info">Infos</button>
+                    <button class="log-filter" data-log-type="warning">Avertissements</button>
+                    <button class="log-filter" data-log-type="danger">Critiques</button>
+                </div>
+                
+                <div class="logs-container" id="activityLogs">
+                    <!-- Logs will be injected here -->
+                </div>
+            </div>
+
+            <!-- Onglet Paramètres -->
+            <div class="tab-content" id="settings-tab">
+                <div class="tab-header">
+                    <h3>Paramètres</h3>
+                </div>
+                
+                <div class="settings-grid">
+                    <div class="settings-section">
+                        <h4>🎨 Apparence</h4>
+                        <label class="setting-item">
+                            <input type="checkbox" id="darkModeSetting"> 
+                            <span>Mode sombre par défaut</span>
+                        </label>
+                        <label class="setting-item">
+                            <input type="checkbox" id="compactMode"> 
+                            <span>Mode compact</span>
+                        </label>
+                    </div>
+
+                    <div class="settings-section">
+                        <h4>💾 Sauvegarde</h4>
+                        <label class="setting-item">
+                            <input type="checkbox" id="autoSaveSetting" checked> 
+                            <span>Sauvegarde automatique</span>
+                        </label>
+                        <label class="setting-item">
+                            <input type="checkbox" id="syncAcrossDevices"> 
+                            <span>Sync localStorage</span>
+                        </label>
+                    </div>
+
+                    <div class="settings-section">
+                        <h4>🔔 Notifications</h4>
+                        <label class="setting-item">
+                            <input type="checkbox" id="soundNotifications"> 
+                            <span>Notifications sonores</span>
+                        </label>
+                        <label class="setting-item">
+                            <input type="checkbox" id="desktopNotifications"> 
+                            <span>Notifications desktop</span>
+                        </label>
+                    </div>
+
+                    <div class="settings-section danger-zone">
+                        <h4>⚠️ Zone dangereuse</h4>
+                        <button onclick="exportData()" class="warning-btn">📤 Exporter les données</button>
+                        <button onclick="importData()" class="warning-btn">📥 Importer des données</button>
+                        <button onclick="clearAllData()" class="danger-btn">🗑️ Réinitialiser toutes les données</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h3>Modifier la tâche</h3>
+            <input type="text" id="editTaskInput" maxlength="100">
+            <div class="modal-buttons">
+                <button onclick="closeEditModal()" class="cancel-btn">Annuler</button>
+                <button onclick="confirmEdit()" class="save-btn">Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="modal">
+        <div class="modal-content confirm-modal">
+            <h3>⚠️ Confirmation</h3>
+            <p id="confirmMessage">Êtes-vous sûr ?</p>
+            <div class="modal-buttons">
+                <button onclick="closeConfirmModal()" class="cancel-btn">Non</button>
+                <button onclick="executeConfirmedAction()" class="danger-btn">Oui</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

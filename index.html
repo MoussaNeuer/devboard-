@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevBoard Pro - Connexion</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Theme switcher flottant -->
+    <div class="theme-switcher">
+        <button id="themeToggle" class="theme-btn">
+            <span class="theme-icon">🌙</span>
+            <span class="theme-text">Mode sombre</span>
+        </button>
+    </div>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <!-- En-tête avec logo -->
+            <div class="auth-header">
+                <div class="logo-container">
+                    <div class="logo">📋</div>
+                    <h1>DevBoard<span class="logo-pro">.pro</span></h1>
+                </div>
+                <p class="auth-subtitle">Back office intelligent pour développeurs</p>
+                
+                <!-- Tabs Connexion / Inscription -->
+                <div class="auth-tabs">
+                    <button class="auth-tab active" id="loginTab" onclick="switchAuthTab('login')">
+                        <span>🔐</span> Connexion
+                    </button>
+                    <button class="auth-tab" id="registerTab" onclick="switchAuthTab('register')">
+                        <span>📝</span> Inscription
+                    </button>
+                </div>
+            </div>
+
+            <!-- Formulaire de connexion -->
+            <form id="loginForm" class="auth-form active">
+                <div class="form-group">
+                    <label for="loginUsername">
+                        <span>👤</span>
+                        Nom d'utilisateur
+                    </label>
+                    <input type="text" id="loginUsername" placeholder="Entre ton pseudo" required autocomplete="off">
+                </div>
+                
+                <div class="form-group">
+                    <label for="loginPassword">
+                        <span>🔑</span>
+                        Mot de passe
+                    </label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required>
+                    <button type="button" class="password-toggle" onclick="togglePassword('loginPassword')">👁️</button>
+                </div>
+
+                <div class="form-options">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="rememberMe">
+                        <span class="checkmark"></span>
+                        <span>Se souvenir de moi</span>
+                    </label>
+                    <a href="#" class="forgot-link">Mot de passe oublié ?</a>
+                </div>
+                
+                <button type="submit" class="auth-btn primary-btn">
+                    <span>Se connecter</span>
+                    <span class="btn-icon">→</span>
+                </button>
+            </form>
+
+            <!-- Formulaire d'inscription -->
+            <form id="registerForm" class="auth-form">
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="registerFirstName">
+                            <span>👤</span>
+                            Prénom
+                        </label>
+                        <input type="text" id="registerFirstName" placeholder="Jean" required>
+                    </div>
+                    
+                    <div class="form-group half">
+                        <label for="registerLastName">
+                            <span>👤</span>
+                            Nom
+                        </label>
+                        <input type="text" id="registerLastName" placeholder="Dupont" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerUsername">
+                        <span>@</span>
+                        Nom d'utilisateur
+                    </label>
+                    <input type="text" id="registerUsername" placeholder="jeandev" required autocomplete="off">
+                    <small class="input-hint">Min 3 caractères, lettres et chiffres uniquement</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerEmail">
+                        <span>📧</span>
+                        Email professionnel
+                    </label>
+                    <input type="email" id="registerEmail" placeholder="jean@devboard.pro" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerPassword">
+                        <span>🔒</span>
+                        Mot de passe
+                    </label>
+                    <input type="password" id="registerPassword" placeholder="Créer un mot de passe" required>
+                    <button type="button" class="password-toggle" onclick="togglePassword('registerPassword')">👁️</button>
+                    <div class="password-strength" id="passwordStrength">
+                        <div class="strength-bar"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerConfirmPassword">
+                        <span>✓</span>
+                        Confirmer le mot de passe
+                    </label>
+                    <input type="password" id="registerConfirmPassword" placeholder="Confirmer le mot de passe" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerRole">
+                        <span>🎯</span>
+                        Choisir ton rôle
+                    </label>
+                    <select id="registerRole" class="role-select" required>
+                        <option value="" disabled selected>Sélectionne un rôle</option>
+                        <option value="admin">👑 Admin - Accès complet</option>
+                        <option value="dev">💻 Développeur - CRUD complet</option>
+                        <option value="viewer">👁️ Viewer - Lecture seule</option>
+                    </select>
+                </div>
+
+                <div class="role-info" id="roleInfo">
+                    <!-- Info dynamique sur le rôle -->
+                </div>
+
+                <div class="form-group terms-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="acceptTerms" required>
+                        <span class="checkmark"></span>
+                        <span>J'accepte les <a href="#" class="terms-link">conditions d'utilisation</a></span>
+                    </label>
+                </div>
+                
+                <button type="submit" class="auth-btn primary-btn">
+                    <span>Créer mon compte</span>
+                    <span class="btn-icon">✓</span>
+                </button>
+            </form>
+
+            <!-- Footer avec stats -->
+            <div class="auth-footer">
+                <div class="stats-mini">
+                    <div class="stat-mini-item">
+                        <span class="stat-mini-value">150+</span>
+                        <span class="stat-mini-label">Développeurs</span>
+                    </div>
+                    <div class="stat-mini-item">
+                        <span class="stat-mini-value">1.2k</span>
+                        <span class="stat-mini-label">Tâches gérées</span>
+                    </div>
+                    <div class="stat-mini-item">
+                        <span class="stat-mini-value">24/7</span>
+                        <span class="stat-mini-label">Disponible</span>
+                    </div>
+                </div>
+                <p class="copyright">© 2026 DevBoard Pro - Developpé par Moussa LO</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de bienvenue -->
+    <div id="welcomeModal" class="modal">
+        <div class="modal-content welcome-modal">
+            <div class="welcome-icon">🎉</div>
+            <h2>Bienvenue sur DevBoard Pro !</h2>
+            <p id="welcomeMessage"></p>
+            <div class="role-card" id="welcomeRoleCard"></div>
+            <button onclick="closeWelcomeModal()" class="primary-btn">Commencer →</button>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+</body>
+</html>
