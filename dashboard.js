@@ -308,53 +308,143 @@ function loadUsers() {
     renderUsers()
 }
 
+// ===== GESTION DES UTILISATEURS - VERSION ULTRA RESPONSIVE =====
 function renderUsers() {
-    const list = document.getElementById('usersList')
-    if (!list) return
+    const usersList = document.getElementById('usersList')
+    if (!usersList) return
+    
+    console.log('👥 Rendu des utilisateurs...')
     
     const users = JSON.parse(localStorage.getItem('devboard-users')) || []
     
+    if (users.length === 0) {
+        usersList.innerHTML = '<div class="empty-state"><i class="fas fa-users-slash"></i><p>Aucun utilisateur</p></div>'
+        return
+    }
+    
     let html = ''
     users.forEach(user => {
-        const isCurrent = user.id === currentUser.id
+        const isCurrent = user.id === currentUser?.id
+        const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username
         const lastLogin = user.lastLogin ? new Date(user.lastLogin).toLocaleDateString('fr-FR') : 'Jamais'
+        const avatarLetters = (user.firstName?.[0] || '') + (user.lastName?.[0] || '') || '👤'
         
         html += `
             <div class="user-card ${isCurrent ? 'current' : ''}">
-                <div class="user-avatar" style="background: ${user.color}">
-                    ${user.firstName.charAt(0)}${user.lastName.charAt(0)}
+                <div class="user-avatar-wrapper">
+                    <div class="user-avatar" style="background: ${user.color || '#4361ee'}">
+                        ${avatarLetters}
+                    </div>
+                    ${isCurrent ? '<div class="user-badge-current"><i class="fas fa-star"></i></div>' : ''}
                 </div>
+                
                 <div class="user-info">
-                    <h4>${user.firstName} ${user.lastName} ${isCurrent ? '<span class="badge">Vous</span>' : ''}</h4>
-                    <p><i class="fas fa-tag"></i> @${user.username}</p>
-                    <div class="user-meta">
-                        <span class="role-badge ${user.role}">
-                            ${user.role === 'admin' ? '👑' : user.role === 'dev' ? '💻' : '👁️'} ${user.role}
+                    <div class="user-header">
+                        <h4>${fullName}</h4>
+                        <span class="role-badge ${user.role || 'viewer'}">
+                            ${user.role === 'admin' ? '👑' : user.role === 'dev' ? '💻' : '👁️'} ${user.role || 'viewer'}
                         </span>
-                        <span><i class="far fa-envelope"></i> ${user.email}</span>
                     </div>
+                    
+                    <div class="user-details">
+                        <p class="user-username">
+                            <i class="fas fa-tag"></i> @${user.username || 'inconnu'}
+                        </p>
+                        <p class="user-email">
+                            <i class="far fa-envelope"></i> ${user.email || 'email@inconnu.com'}
+                        </p>
+                    </div>
+                    
                     <div class="user-footer">
-                        <small><i class="far fa-calendar-alt"></i> ${new Date(user.createdAt).toLocaleDateString()}</small>
-                        <small><i class="fas fa-history"></i> ${lastLogin}</small>
+                        <div class="user-date">
+                            <i class="far fa-calendar-alt"></i>
+                            <span>${new Date(user.createdAt || Date.now()).toLocaleDateString('fr-FR')}</span>
+                        </div>
+                        <div class="user-last-login">
+                            <i class="fas fa-history"></i>
+                            <span>${lastLogin}</span>
+                        </div>
                     </div>
+                    
+                    ${hasPermission('admin') && !isCurrent ? `
+                        <div class="user-actions">
+                            <button class="user-action-btn" onclick="impersonateUser('${user.id}')" title="Impersonner">
+                                <i class="fas fa-user-secret"></i>
+                            </button>
+                            <button class="user-action-btn" onclick="toggleUserStatus('${user.id}')" title="${user.isActive ? 'Désactiver' : 'Activer'}">
+                                <i class="fas ${user.isActive ? 'fa-user-lock' : 'fa-user-check'}"></i>
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `
     })
     
-    list.innerHTML = html
+    usersList.innerHTML = html
     
-    // Sessions
+    // Sessions actives
+    renderSessions(users)
+}
+
+function renderSessions(users) {
     const sessionsList = document.getElementById('sessionsList')
-    if (sessionsList) {
-        const active = users.filter(u => u.lastLogin).slice(0, 3)
-        sessionsList.innerHTML = active.map(u => `
+    if (!sessionsList) return
+    
+    const activeSessions = users.filter(u => u.lastLogin).sort((a, b) => 
+        new Date(b.lastLogin) - new Date(a.lastLogin)
+    ).slice(0, 5)
+    
+    if (activeSessions.length === 0) {
+        sessionsList.innerHTML = '<div class="empty-sessions"><i class="fas fa-power-off"></i> Aucune session active</div>'
+        return
+    }
+    
+    let html = ''
+    activeSessions.forEach(user => {
+        const lastActive = new Date(user.lastLogin).toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        })
+        
+        html += `
             <div class="session-item">
-                <i class="fas fa-circle" style="color: #06d6a0; font-size: 0.5rem;"></i>
-                <span>${u.firstName} ${u.lastName}</span>
-                <small>${new Date(u.lastLogin).toLocaleTimeString()}</small>
+                <div class="session-user">
+                    <div class="session-avatar" style="background: ${user.color || '#4361ee'}">
+                        ${(user.firstName?.[0] || '')}${(user.lastName?.[0] || '')}
+                    </div>
+                    <div class="session-info">
+                        <span class="session-name">${user.firstName || ''} ${user.lastName || ''}</span>
+                        <span class="session-role ${user.role}">${user.role}</span>
+                    </div>
+                </div>
+                <div class="session-time">
+                    <i class="fas fa-clock"></i>
+                    <span>${lastActive}</span>
+                </div>
+                <div class="session-status">
+                    <i class="fas fa-circle" style="color: #06d6a0;"></i>
+                </div>
             </div>
-        `).join('') || '<p>Aucune session</p>'
+        `
+    })
+    
+    sessionsList.innerHTML = html
+    
+    // Mise à jour du compteur en ligne
+    const onlineCount = document.getElementById('onlineCount')
+    if (onlineCount) {
+        const today = users.filter(u => {
+            if (!u.lastLogin) return false
+            return new Date(u.lastLogin).toDateString() === new Date().toDateString()
+        }).length
+        
+        onlineCount.innerHTML = `
+            <div class="online-stats">
+                <span><i class="fas fa-users"></i> ${users.length} inscrits</span>
+                <span class="online-today"><i class="fas fa-circle"></i> ${today} en ligne</span>
+            </div>
+        `
     }
 }
 
