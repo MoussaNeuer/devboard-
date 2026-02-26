@@ -1,136 +1,74 @@
 // ===== VARIABLES GLOBALES =====
-let currentUser = null
 let tasks = []
 let activityLogs = []
 let currentFilter = 'all'
 let currentLogFilter = 'all'
 let editingTaskId = null
-let pendingAction = null
 
-// ===== INITIALISATION =====
+
+// ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Initialisation du dashboard...')
+    console.log('🚀 Dashboard chargé')
     
-    // Vérifier la session
-    const session = checkSession()
+    // Vérifier session
+    const session = JSON.parse(localStorage.getItem('devboard-session'))
     if (!session) {
         window.location.href = 'index.html'
         return
     }
     
-    // Charger l'utilisateur courant
-    loadCurrentUser(session)
-    
-    // Initialiser l'interface
-    initializeDashboard()
-    
-    // Charger les données
-    loadTasks()
-    loadActivityLogs()
-    loadUsers()
-    
-    // Configurer les événements
-    setupEventListeners()
-    
-    // Initialiser le thème
-    initTheme()
-    
-    console.log('✅ Dashboard initialisé avec succès')
-})
-
-function checkSession() {
-    const session = JSON.parse(localStorage.getItem('devboard-session'))
-    
-    if (!session) return null
-    
-    // Vérifier expiration
-    if (new Date(session.expiresAt) < new Date()) {
-        logout()
-        return null
-    }
-    
-    return session
-}
-
-function loadCurrentUser(session) {
+    // Charger utilisateur
     const users = JSON.parse(localStorage.getItem('devboard-users')) || []
     currentUser = users.find(u => u.id === session.userId)
     
     if (!currentUser) {
-        logout()
+        window.location.href = 'index.html'
         return
     }
-}
+    
+    // Initialiser
+    initUI()
+    loadTasks()
+    loadLogs()
+    loadUsers()
+    initTheme()
+    setupEvents()
+})
 
-// ===== INITIALISATION DE L'INTERFACE =====
-function initializeDashboard() {
-    // Afficher les infos utilisateur
+function initUI() {
     document.getElementById('userInfo').textContent = `${currentUser.firstName} ${currentUser.lastName}`
     document.getElementById('userRole').textContent = `(${currentUser.role})`
     
-    // Afficher les permissions
-    updatePermissionUI()
-    
-    // Adapter l'interface selon les permissions
-    adaptUIToPermissions()
-    
-    // Afficher le compteur en ligne
-    updateOnlineCount()
-}
-
-function updatePermissionUI() {
+    // Permission badge
     const badge = document.getElementById('permissionBadge')
     if (badge) {
-        badge.textContent = `🔑 ${currentUser.permissions.join(' · ')}`
+        badge.innerHTML = `<i class="fas fa-key"></i> ${currentUser.permissions.join(' · ')}`
     }
-}
-
-function adaptUIToPermissions() {
-    // Cacher le formulaire d'ajout si pas la permission
+    
+    // Cacher add task si pas permission
     if (!hasPermission('create')) {
-        const addSection = document.getElementById('addTaskSection')
-        if (addSection) addSection.style.display = 'none'
-    }
-    
-    // Désactiver les actions si pas les permissions
-    if (!hasPermission('edit') && !hasPermission('delete')) {
-        document.querySelectorAll('.task-actions button').forEach(btn => {
-            btn.disabled = true
-            btn.style.opacity = '0.5'
-            btn.title = 'Permission requise'
-        })
+        document.getElementById('addTaskSection').style.display = 'none'
     }
 }
 
-// ===== GESTION DES PERMISSIONS =====
 function hasPermission(action) {
-    return currentUser.permissions.includes('all') || 
-           currentUser.permissions.includes(action)
+    return currentUser.permissions.includes('all') || currentUser.permissions.includes(action)
 }
 
-// ===== CONFIGURATION DES ÉVÉNEMENTS =====
-function setupEventListeners() {
+function setupEvents() {
+    // Déconnexion
+    document.querySelector('.logout-btn').addEventListener('click', logout)
+    
     // Theme toggle
-    const themeToggle = document.getElementById('themeToggle')
-    if (themeToggle) {
-        themeToggle.addEventListener('click', toggleTheme)
-    }
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme)
     
-    // Add task
-    const addBtn = document.getElementById('addTaskBtn')
-    if (addBtn) {
-        addBtn.addEventListener('click', addTask)
-    }
+    // Ajout tâche
+    document.getElementById('addTaskBtn').addEventListener('click', addTask)
+    document.getElementById('taskInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addTask()
+    })
     
-    // Task input enter key
-    const taskInput = document.getElementById('taskInput')
-    if (taskInput) {
-        taskInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') addTask()
-        })
-    }
-    
-    // Filtres de tâches
+    // Filtres
     document.querySelectorAll('[data-filter]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'))
@@ -140,27 +78,21 @@ function setupEventListeners() {
         })
     })
     
-    // Tabs principaux
+    // Tabs
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'))
             
             e.target.classList.add('active')
-            const tabId = e.target.dataset.tab + '-tab'
-            document.getElementById(tabId).classList.add('active')
+            document.getElementById(e.target.dataset.tab + '-tab').classList.add('active')
             
-            // Rafraîchir le contenu si nécessaire
-            if (e.target.dataset.tab === 'users') {
-                renderUsers()
-                renderSessions()
-            } else if (e.target.dataset.tab === 'logs') {
-                renderLogs()
-            }
+            if (e.target.dataset.tab === 'users') renderUsers()
+            if (e.target.dataset.tab === 'logs') renderLogs()
         })
     })
     
-    // Filtres de logs
+    // Log filters
     document.querySelectorAll('[data-log-type]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('[data-log-type]').forEach(b => b.classList.remove('active'))
@@ -170,261 +102,184 @@ function setupEventListeners() {
         })
     })
     
-    // Paramètres
-    const darkModeSetting = document.getElementById('darkModeSetting')
-    if (darkModeSetting) {
-        darkModeSetting.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                document.body.classList.add('dark-mode')
-                localStorage.setItem('devboard-theme', 'dark')
-            } else {
-                document.body.classList.remove('dark-mode')
-                localStorage.setItem('devboard-theme', 'light')
-            }
-        })
-    }
+    // Settings
+    document.getElementById('darkModeSetting').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            document.body.classList.add('dark-mode')
+            localStorage.setItem('devboard-theme', 'dark')
+        } else {
+            document.body.classList.remove('dark-mode')
+            localStorage.setItem('devboard-theme', 'light')
+        }
+    })
     
-    const autoSaveSetting = document.getElementById('autoSaveSetting')
-    if (autoSaveSetting) {
-        autoSaveSetting.addEventListener('change', (e) => {
-            localStorage.setItem('devboard-autosave', e.target.checked)
-        })
-    }
+    // Export/Import
+    document.querySelector('[onclick="exportData()"]')?.addEventListener('click', exportData)
+    document.querySelector('[onclick="importData()"]')?.addEventListener('click', importData)
+    document.querySelector('[onclick="clearAllData()"]')?.addEventListener('click', clearAllData)
+    document.querySelector('[onclick="clearLogs()"]')?.addEventListener('click', clearLogs)
 }
 
-// ===== GESTION DES TÂCHES =====
+// ===== TÂCHES =====
 function addTask() {
     if (!hasPermission('create')) {
-        showNotification('⛔ Tu n\'as pas la permission de créer des tâches', 'error')
-        logActivity('Tentative de création non autorisée', 'warning')
+        showNotification('⛔ Permission refusée', 'error')
         return
     }
     
     const input = document.getElementById('taskInput')
-    const taskName = input.value.trim()
-    
-    if (!taskName) {
-        showNotification('Veuillez entrer un nom de tâche', 'warning')
-        return
-    }
+    const name = input.value.trim()
+    if (!name) return showNotification('Entre un nom de tâche', 'warning')
     
     const newTask = {
-        id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-        name: taskName,
+        id: Date.now(),
+        name: name,
         status: 'inProgress',
         createdAt: new Date().toISOString(),
         createdBy: currentUser.username,
-        createdById: currentUser.id,
         createdByName: `${currentUser.firstName} ${currentUser.lastName}`,
-        order: tasks.length
+        comments: []
     }
     
     tasks.push(newTask)
     saveTasks()
-    logActivity(`Tâche créée: "${taskName}"`, 'info')
+    logActivity(`Tâche créée: "${name}"`, 'info')
     
     input.value = ''
     renderTasks()
-    showNotification('✅ Tâche ajoutée avec succès', 'success')
+    showNotification('✅ Tâche ajoutée', 'success')
 }
 
-function toggleTaskStatus(taskId) {
+function toggleTaskStatus(id) {
     if (!hasPermission('edit')) {
         showNotification('⛔ Permission refusée', 'error')
         return
     }
     
-    const task = tasks.find(t => t.id === taskId)
+    const task = tasks.find(t => t.id == id)
     if (task) {
         task.status = task.status === 'inProgress' ? 'completed' : 'inProgress'
         task.updatedAt = new Date().toISOString()
-        task.updatedBy = currentUser.username
-        
         saveTasks()
-        logActivity(`Tâche "${task.name}" marquée comme ${task.status === 'completed' ? 'terminée' : 'en cours'}`, 'info')
+        logActivity(`Tâche "${task.name}" ${task.status === 'completed' ? 'terminée' : 'reprise'}`, 'info')
         renderTasks()
-        showNotification(`Tâche ${task.status === 'completed' ? 'terminée' : 'reprise'}`, 'success')
     }
 }
 
-function openEditModal(taskId) {
+function editTask(id) {
     if (!hasPermission('edit')) {
         showNotification('⛔ Permission refusée', 'error')
         return
     }
     
-    const task = tasks.find(t => t.id === taskId)
-    if (task) {
-        editingTaskId = taskId
-        document.getElementById('editTaskInput').value = task.name
-        document.getElementById('editModal').classList.add('active')
-    }
-}
-
-function closeEditModal() {
-    document.getElementById('editModal').classList.remove('active')
-    editingTaskId = null
-}
-
-function confirmEdit() {
-    const newName = document.getElementById('editTaskInput').value.trim()
-    
-    if (!newName) {
-        showNotification('Le nom ne peut pas être vide', 'warning')
-        return
-    }
-    
-    const task = tasks.find(t => t.id === editingTaskId)
-    if (task) {
-        const oldName = task.name
-        task.name = newName
+    const task = tasks.find(t => t.id == id)
+    const newName = prompt('Modifier la tâche:', task.name)
+    if (newName && newName.trim()) {
+        task.name = newName.trim()
         task.updatedAt = new Date().toISOString()
-        task.updatedBy = currentUser.username
-        
         saveTasks()
-        logActivity(`Tâche modifiée: "${oldName}" → "${newName}"`, 'info')
+        logActivity(`Tâche modifiée`, 'info')
         renderTasks()
-        showNotification('✅ Tâche modifiée avec succès', 'success')
+        showNotification('✅ Tâche modifiée', 'success')
     }
-    
-    closeEditModal()
 }
 
-function confirmDelete(taskId) {
+function deleteTask(id) {
     if (!hasPermission('delete')) {
         showNotification('⛔ Permission refusée', 'error')
         return
     }
     
-    const task = tasks.find(t => t.id === taskId)
-    if (task) {
-        pendingAction = () => {
-            tasks = tasks.filter(t => t.id !== taskId)
-            saveTasks()
-            logActivity(`Tâche supprimée: "${task.name}"`, 'warning')
-            renderTasks()
-            showNotification('🗑️ Tâche supprimée', 'warning')
-        }
-        
-        document.getElementById('confirmMessage').textContent = `Supprimer la tâche "${task.name}" ?`
-        document.getElementById('confirmModal').classList.add('active')
+    const task = tasks.find(t => t.id == id)
+    if (confirm(`Supprimer "${task.name}" ?`)) {
+        tasks = tasks.filter(t => t.id != id)
+        saveTasks()
+        logActivity(`Tâche supprimée: "${task.name}"`, 'warning')
+        renderTasks()
+        showNotification('🗑️ Tâche supprimée', 'warning')
     }
 }
 
-function closeConfirmModal() {
-    document.getElementById('confirmModal').classList.remove('active')
-    pendingAction = null
-}
-
-function executeConfirmedAction() {
-    if (pendingAction) {
-        pendingAction()
-        pendingAction = null
+function addComment(taskId) {
+    const comment = prompt('Ajouter un commentaire:')
+    if (comment) {
+        const task = tasks.find(t => t.id == taskId)
+        if (!task.comments) task.comments = []
+        task.comments.push({
+            text: comment,
+            user: currentUser.username,
+            date: new Date().toISOString()
+        })
+        saveTasks()
+        renderTasks()
     }
-    closeConfirmModal()
 }
 
 function renderTasks() {
     const container = document.getElementById('tasksContainer')
     if (!container) return
     
-    console.log('Rendu des tâches...')
+    let filtered = [...tasks]
     
-    let filteredTasks = [...tasks]
+    if (currentFilter === 'inProgress') filtered = filtered.filter(t => t.status === 'inProgress')
+    if (currentFilter === 'completed') filtered = filtered.filter(t => t.status === 'completed')
+    if (currentFilter === 'myTasks') filtered = filtered.filter(t => t.createdBy === currentUser.username)
     
-    // Appliquer les filtres
-    switch(currentFilter) {
-        case 'inProgress':
-            filteredTasks = filteredTasks.filter(t => t.status === 'inProgress')
-            break
-        case 'completed':
-            filteredTasks = filteredTasks.filter(t => t.status === 'completed')
-            break
-        case 'myTasks':
-            filteredTasks = filteredTasks.filter(t => t.createdBy === currentUser.username)
-            break
-        default: // 'all'
-            break
-    }
+    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     
-    // Trier par ordre et date
-    filteredTasks.sort((a, b) => {
-        if (a.order !== undefined && b.order !== undefined) {
-            return a.order - b.order
-        }
-        return new Date(b.createdAt) - new Date(a.createdAt)
-    })
-    
-    if (filteredTasks.length === 0) {
+    if (filtered.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <div class="empty-icon">📋</div>
-                <p>Aucune tâche à afficher</p>
-                ${hasPermission('create') ? 
-                    '<small>Clique sur "Ajouter" pour créer ta première tâche</small>' : 
-                    '<small>Aucune tâche disponible</small>'}
+                <i class="fas fa-tasks empty-icon"></i>
+                <p>Aucune tâche</p>
+                ${hasPermission('create') ? '<small>Clique sur <i class="fas fa-plus"></i> pour commencer</small>' : ''}
             </div>
         `
         return
     }
     
     let html = ''
-    filteredTasks.forEach(task => {
-        const createdDate = new Date(task.createdAt).toLocaleDateString('fr-FR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+    filtered.forEach(task => {
+        const date = new Date(task.createdAt).toLocaleDateString('fr-FR', {
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
         })
         
-        const isCreator = task.createdBy === currentUser.username
+        const comments = task.comments?.length || 0
         
         html += `
             <div class="task-item ${task.status}" data-id="${task.id}">
-                <div class="task-checkbox-wrapper">
+                <div class="task-checkbox">
                     <input type="checkbox" 
-                           class="task-checkbox" 
-                           ${task.status === 'completed' ? 'checked' : ''}
-                           onchange="toggleTaskStatus('${task.id}')"
+                           ${task.status === 'completed' ? 'checked' : ''} 
+                           onchange="toggleTaskStatus(${task.id})"
                            ${!hasPermission('edit') ? 'disabled' : ''}>
                 </div>
                 
                 <div class="task-content">
-                    <div class="task-name ${task.status === 'completed' ? 'task-completed' : ''}">
+                    <div class="task-name ${task.status === 'completed' ? 'completed' : ''}">
                         ${escapeHtml(task.name)}
                     </div>
                     <div class="task-meta">
-                        <span class="meta-item">
-                            <span class="meta-icon">📅</span>
-                            ${createdDate}
-                        </span>
-                        <span class="meta-item">
-                            <span class="meta-icon">👤</span>
-                            ${task.createdByName || task.createdBy}
-                        </span>
-                        ${task.updatedBy ? `
-                            <span class="meta-item">
-                                <span class="meta-icon">✏️</span>
-                                Modifiée
-                            </span>
-                        ` : ''}
-                        ${isCreator ? `
-                            <span class="badge creator-badge">Créateur</span>
-                        ` : ''}
+                        <span><i class="far fa-calendar"></i> ${date}</span>
+                        <span><i class="far fa-user"></i> ${task.createdByName}</span>
+                        ${comments > 0 ? `<span><i class="far fa-comment"></i> ${comments}</span>` : ''}
                     </div>
                 </div>
                 
                 <div class="task-actions">
+                    <button class="icon-btn comment-btn" onclick="addComment(${task.id})" title="Commenter">
+                        <i class="far fa-comment"></i>
+                    </button>
+                    
                     ${hasPermission('edit') ? `
-                        <button class="action-btn edit-btn" onclick="openEditModal('${task.id}')" title="Modifier">
-                            ✏️
+                        <button class="icon-btn edit-btn" onclick="editTask(${task.id})" title="Modifier">
+                            <i class="fas fa-pencil-alt"></i>
                         </button>
                     ` : ''}
                     
                     ${hasPermission('delete') ? `
-                        <button class="action-btn delete-btn" onclick="confirmDelete('${task.id}')" title="Supprimer">
-                            🗑️
+                        <button class="icon-btn delete-btn" onclick="deleteTask(${task.id})" title="Supprimer">
+                            <i class="fas fa-trash"></i>
                         </button>
                     ` : ''}
                 </div>
@@ -436,151 +291,88 @@ function renderTasks() {
     updateStats()
 }
 
-// ===== STATISTIQUES =====
 function updateStats() {
     const total = tasks.length
     const inProgress = tasks.filter(t => t.status === 'inProgress').length
     const completed = tasks.filter(t => t.status === 'completed').length
-    const myTasks = tasks.filter(t => t.createdBy === currentUser.username).length
     const rate = total ? Math.round((completed / total) * 100) : 0
     
     document.getElementById('totalTasks').textContent = total
     document.getElementById('inProgress').textContent = inProgress
     document.getElementById('completed').textContent = completed
     document.getElementById('completionRate').textContent = rate + '%'
-    
-    // Mettre à jour les stats dans l'onglet si présent
-    const myTasksStat = document.getElementById('myTasks')
-    if (myTasksStat) myTasksStat.textContent = myTasks
 }
 
-// ===== GESTION DES UTILISATEURS =====
+// ===== UTILISATEURS =====
 function loadUsers() {
     renderUsers()
-    renderSessions()
 }
 
 function renderUsers() {
-    const usersList = document.getElementById('usersList')
-    if (!usersList) return
+    const list = document.getElementById('usersList')
+    if (!list) return
     
     const users = JSON.parse(localStorage.getItem('devboard-users')) || []
     
     let html = ''
     users.forEach(user => {
-        const isCurrentUser = user.id === currentUser.id
+        const isCurrent = user.id === currentUser.id
         const lastLogin = user.lastLogin ? new Date(user.lastLogin).toLocaleDateString('fr-FR') : 'Jamais'
         
         html += `
-            <div class="user-card ${isCurrentUser ? 'current-user' : ''}">
+            <div class="user-card ${isCurrent ? 'current' : ''}">
                 <div class="user-avatar" style="background: ${user.color}">
                     ${user.firstName.charAt(0)}${user.lastName.charAt(0)}
                 </div>
-                <div class="user-details">
-                    <div class="user-name-header">
-                        <h4>${user.firstName} ${user.lastName}</h4>
-                        ${isCurrentUser ? '<span class="badge current-badge">Vous</span>' : ''}
-                    </div>
-                    <p class="user-username">@${user.username}</p>
+                <div class="user-info">
+                    <h4>${user.firstName} ${user.lastName} ${isCurrent ? '<span class="badge">Vous</span>' : ''}</h4>
+                    <p><i class="fas fa-tag"></i> @${user.username}</p>
                     <div class="user-meta">
-                        <span class="user-role-badge role-${user.role}">
+                        <span class="role-badge ${user.role}">
                             ${user.role === 'admin' ? '👑' : user.role === 'dev' ? '💻' : '👁️'} ${user.role}
                         </span>
-                        <span class="user-email">📧 ${user.email}</span>
+                        <span><i class="far fa-envelope"></i> ${user.email}</span>
                     </div>
                     <div class="user-footer">
-                        <span class="user-date">📅 Inscrit le ${new Date(user.createdAt).toLocaleDateString('fr-FR')}</span>
-                        <span class="user-last">Dernière connexion: ${lastLogin}</span>
+                        <small><i class="far fa-calendar-alt"></i> ${new Date(user.createdAt).toLocaleDateString()}</small>
+                        <small><i class="fas fa-history"></i> ${lastLogin}</small>
                     </div>
                 </div>
-                ${hasPermission('admin') && !isCurrentUser ? `
-                    <div class="user-actions">
-                        <button class="action-btn" onclick="impersonateUser('${user.id}')" title="Impersonner">
-                            🔀
-                        </button>
-                        <button class="action-btn" onclick="toggleUserStatus('${user.id}')" title="${user.isActive ? 'Désactiver' : 'Activer'}">
-                            ${user.isActive ? '🔒' : '🔓'}
-                        </button>
-                    </div>
-                ` : ''}
             </div>
         `
     })
     
-    usersList.innerHTML = html
-}
-
-function renderSessions() {
+    list.innerHTML = html
+    
+    // Sessions
     const sessionsList = document.getElementById('sessionsList')
-    if (!sessionsList) return
-    
-    // Simuler des sessions actives (à remplacer par de vraies données)
-    const users = JSON.parse(localStorage.getItem('devboard-users')) || []
-    const activeSessions = users.filter(u => u.lastLogin).slice(0, 5)
-    
-    if (activeSessions.length === 0) {
-        sessionsList.innerHTML = '<p class="empty-message">Aucune session active</p>'
-        return
-    }
-    
-    let html = ''
-    activeSessions.forEach(user => {
-        const lastSeen = user.lastLogin ? new Date(user.lastLogin).toLocaleString('fr-FR') : 'Inconnu'
-        
-        html += `
+    if (sessionsList) {
+        const active = users.filter(u => u.lastLogin).slice(0, 3)
+        sessionsList.innerHTML = active.map(u => `
             <div class="session-item">
-                <div class="session-user">
-                    <span class="session-avatar" style="background: ${user.color}">
-                        ${user.firstName.charAt(0)}${user.lastName.charAt(0)}
-                    </span>
-                    <span class="session-name">${user.firstName} ${user.lastName}</span>
-                </div>
-                <span class="session-role role-${user.role}">${user.role}</span>
-                <span class="session-time">🕐 ${lastSeen}</span>
+                <i class="fas fa-circle" style="color: #06d6a0; font-size: 0.5rem;"></i>
+                <span>${u.firstName} ${u.lastName}</span>
+                <small>${new Date(u.lastLogin).toLocaleTimeString()}</small>
             </div>
-        `
-    })
-    
-    sessionsList.innerHTML = html
-}
-
-function updateOnlineCount() {
-    const onlineCount = document.getElementById('onlineCount')
-    if (onlineCount) {
-        const users = JSON.parse(localStorage.getItem('devboard-users')) || []
-        const activeToday = users.filter(u => {
-            if (!u.lastLogin) return false
-            const lastLogin = new Date(u.lastLogin)
-            const today = new Date()
-            return lastLogin.toDateString() === today.toDateString()
-        }).length
-        
-        onlineCount.textContent = `👥 ${activeToday} en ligne aujourd'hui`
+        `).join('') || '<p>Aucune session</p>'
     }
 }
 
-// ===== GESTION DES LOGS =====
-function loadActivityLogs() {
-    const saved = localStorage.getItem('devboard-activity-logs')
-    activityLogs = saved ? JSON.parse(saved) : []
+// ===== LOGS =====
+function loadLogs() {
+    activityLogs = JSON.parse(localStorage.getItem('devboard-activity-logs')) || []
     renderLogs()
 }
 
 function logActivity(action, type = 'info') {
-    const log = {
-        id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-        action: action,
+    activityLogs.unshift({
+        id: Date.now(),
+        action,
         user: currentUser.username,
-        userName: `${currentUser.firstName} ${currentUser.lastName}`,
         timestamp: new Date().toISOString(),
-        type: type
-    }
-    
-    activityLogs.unshift(log)
-    
-    // Garder 100 logs max
+        type
+    })
     if (activityLogs.length > 100) activityLogs.pop()
-    
     localStorage.setItem('devboard-activity-logs', JSON.stringify(activityLogs))
     renderLogs()
 }
@@ -589,32 +381,25 @@ function renderLogs() {
     const container = document.getElementById('activityLogs')
     if (!container) return
     
-    let filteredLogs = [...activityLogs]
-    
+    let filtered = [...activityLogs]
     if (currentLogFilter !== 'all') {
-        filteredLogs = filteredLogs.filter(log => log.type === currentLogFilter)
+        filtered = filtered.filter(l => l.type === currentLogFilter)
     }
     
-    if (filteredLogs.length === 0) {
-        container.innerHTML = '<p class="empty-logs">📝 Aucun log à afficher</p>'
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-logs"><i class="fas fa-scroll"></i> Aucun log</div>'
         return
     }
     
     let html = ''
-    filteredLogs.forEach(log => {
-        const time = new Date(log.timestamp).toLocaleString('fr-FR', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        })
-        
+    filtered.slice(0, 30).forEach(log => {
+        const time = new Date(log.timestamp).toLocaleTimeString()
         html += `
             <div class="log-entry ${log.type}">
                 <span class="log-time">${time}</span>
-                <span class="log-user">${log.userName || log.user}</span>
-                <span class="log-action">${escapeHtml(log.action)}</span>
-                <span class="log-type-badge ${log.type}">${log.type}</span>
+                <span class="log-user"><i class="fas fa-user"></i> ${log.user}</span>
+                <span class="log-action">${log.action}</span>
+                <span class="log-badge ${log.type}">${log.type}</span>
             </div>
         `
     })
@@ -623,55 +408,27 @@ function renderLogs() {
 }
 
 function clearLogs() {
-    if (!hasPermission('admin')) {
-        showNotification('Seul l\'admin peut effacer les logs', 'error')
-        return
-    }
-    
-    pendingAction = () => {
+    if (!hasPermission('admin')) return showNotification('Permission refusée', 'error')
+    if (confirm('Effacer tous les logs ?')) {
         activityLogs = []
         localStorage.removeItem('devboard-activity-logs')
-        logActivity('Logs effacés', 'warning')
         renderLogs()
         showNotification('Logs effacés', 'success')
     }
-    
-    document.getElementById('confirmMessage').textContent = 'Effacer tous les logs ?'
-    document.getElementById('confirmModal').classList.add('active')
 }
 
 // ===== SAUVEGARDE =====
 function loadTasks() {
-    const saved = localStorage.getItem('devboard-tasks')
-    if (saved) {
-        try {
-            tasks = JSON.parse(saved)
-        } catch (e) {
-            tasks = []
+    tasks = JSON.parse(localStorage.getItem('devboard-tasks')) || [
+        {
+            id: 1,
+            name: 'Bienvenue sur DevBoard Pro !',
+            status: 'inProgress',
+            createdAt: new Date().toISOString(),
+            createdBy: 'admin',
+            createdByName: 'Admin System'
         }
-    } else {
-        // Tâches par défaut
-        tasks = [
-            {
-                id: 'task_default_1',
-                name: 'Bienvenue sur DevBoard Pro !',
-                status: 'inProgress',
-                createdAt: new Date().toISOString(),
-                createdBy: 'admin',
-                createdByName: 'Admin System',
-                order: 0
-            },
-            {
-                id: 'task_default_2',
-                name: 'Clique pour marquer comme terminée',
-                status: 'inProgress',
-                createdAt: new Date().toISOString(),
-                createdBy: 'admin',
-                createdByName: 'Admin System',
-                order: 1
-            }
-        ]
-    }
+    ]
     renderTasks()
 }
 
@@ -680,143 +437,78 @@ function saveTasks() {
     updateStats()
 }
 
-// ===== ACTIONS ADMIN =====
-function impersonateUser(userId) {
-    if (!hasPermission('admin')) {
-        showNotification('Seul l\'admin peut impersonner', 'error')
-        return
-    }
-    
-    const users = JSON.parse(localStorage.getItem('devboard-users')) || []
-    const user = users.find(u => u.id === userId)
-    
-    if (user) {
-        logActivity(`Impersonnation de ${user.username}`, 'warning')
-        
-        // Créer nouvelle session
-        const session = {
-            id: 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-            userId: user.id,
-            username: user.username,
-            role: user.role,
-            permissions: user.permissions,
-            token: 'fake-token',
-            createdAt: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        }
-        
-        localStorage.setItem('devboard-session', JSON.stringify(session))
-        
-        showNotification(`Vous êtes maintenant ${user.firstName} ${user.lastName}`, 'success')
-        setTimeout(() => window.location.reload(), 1500)
-    }
-}
-
-function toggleUserStatus(userId) {
-    if (!hasPermission('admin')) {
-        showNotification('Permission refusée', 'error')
-        return
-    }
-    
-    const users = JSON.parse(localStorage.getItem('devboard-users')) || []
-    const userIndex = users.findIndex(u => u.id === userId)
-    
-    if (userIndex !== -1) {
-        users[userIndex].isActive = !users[userIndex].isActive
-        localStorage.setItem('devboard-users', JSON.stringify(users))
-        
-        logActivity(`Utilisateur ${users[userIndex].username} ${users[userIndex].isActive ? 'activé' : 'désactivé'}`, 'warning')
-        showNotification(`Utilisateur ${users[userIndex].isActive ? 'activé' : 'désactivé'}`, 'success')
-        renderUsers()
-    }
-}
-
 // ===== EXPORT/IMPORT =====
 function exportData() {
-    const data = {
-        tasks: tasks,
-        logs: activityLogs,
-        exportDate: new Date().toISOString(),
-        exportedBy: currentUser.username,
-        version: '2.0.0'
-    }
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
+    const data = { tasks, logs: activityLogs }
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' })
     const a = document.createElement('a')
-    a.href = url
-    a.download = `devboard-export-${new Date().toISOString().split('T')[0]}.json`
+    a.href = URL.createObjectURL(blob)
+    a.download = `devboard-${new Date().toISOString().split('T')[0]}.json`
     a.click()
-    
-    logActivity('Données exportées', 'info')
-    showNotification('✅ Données exportées avec succès', 'success')
+    showNotification('Données exportées', 'success')
 }
 
 function importData() {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = '.json'
-    
-    input.onchange = (e) => {
+    input.onchange = e => {
         const file = e.target.files[0]
         const reader = new FileReader()
-        
-        reader.onload = (e) => {
+        reader.onload = e => {
             try {
                 const data = JSON.parse(e.target.result)
-                
-                if (data.tasks) {
-                    tasks = data.tasks
-                    saveTasks()
-                    
-                    if (data.logs) {
-                        activityLogs = data.logs
-                        localStorage.setItem('devboard-activity-logs', JSON.stringify(activityLogs))
-                    }
-                    
-                    logActivity('Données importées', 'info')
-                    renderTasks()
-                    renderLogs()
-                    showNotification('✅ Données importées avec succès', 'success')
-                } else {
-                    showNotification('Fichier invalide', 'error')
-                }
-            } catch (error) {
-                showNotification('Erreur lors de l\'import', 'error')
+                if (data.tasks) tasks = data.tasks
+                if (data.logs) activityLogs = data.logs
+                saveTasks()
+                localStorage.setItem('devboard-activity-logs', JSON.stringify(activityLogs))
+                renderTasks()
+                renderLogs()
+                showNotification('Import réussi', 'success')
+            } catch {
+                showNotification('Fichier invalide', 'error')
             }
         }
-        
         reader.readAsText(file)
     }
-    
     input.click()
 }
 
-// ===== RÉINITIALISATION =====
 function clearAllData() {
-    if (!hasPermission('admin')) {
-        showNotification('Seul l\'admin peut réinitialiser les données', 'error')
-        return
-    }
-    
-    pendingAction = () => {
+    if (!hasPermission('admin')) return showNotification('Permission refusée', 'error')
+    if (confirm('⚠️ Réinitialiser TOUT ?')) {
         tasks = []
         activityLogs = []
         localStorage.removeItem('devboard-tasks')
         localStorage.removeItem('devboard-activity-logs')
-        
-        logActivity('Base de données réinitialisée', 'danger')
         renderTasks()
         renderLogs()
-        showNotification('🔥 Toutes les données ont été réinitialisées', 'warning')
+        showNotification('Données réinitialisées', 'warning')
     }
-    
-    document.getElementById('confirmMessage').textContent = 
-        '⚠️ Réinitialiser TOUTES les données ? Cette action est irréversible !'
-    document.getElementById('confirmModal').classList.add('active')
 }
 
-// ===== UTILITAIRES =====
+// ===== THÈME =====
+function initTheme() {
+    const saved = localStorage.getItem('devboard-theme')
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.body.classList.add('dark-mode')
+        document.getElementById('themeToggle').innerHTML = '<i class="fas fa-sun"></i>'
+    }
+}
+
+function toggleTheme() {
+    document.body.classList.toggle('dark-mode')
+    const isDark = document.body.classList.contains('dark-mode')
+    localStorage.setItem('devboard-theme', isDark ? 'dark' : 'light')
+    document.getElementById('themeToggle').innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'
+}
+
+// ===== UTILS =====
+function logout() {
+    localStorage.removeItem('devboard-session')
+    window.location.href = 'index.html'
+}
+
 function escapeHtml(text) {
     const div = document.createElement('div')
     div.textContent = text
@@ -824,189 +516,21 @@ function escapeHtml(text) {
 }
 
 function showNotification(message, type = 'info') {
-    // Vérifier si la fonction existe (définie dans auth.js)
-    if (typeof window.showNotification === 'function') {
-        window.showNotification(message, type)
-        return
+    const icons = {
+        success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️'
     }
     
-    // Fallback
-    alert(message)
+    const notif = document.createElement('div')
+    notif.className = `notification ${type}`
+    notif.innerHTML = `
+        <span class="icon">${icons[type]}</span>
+        <span>${message}</span>
+    `
+    document.body.appendChild(notif)
+    
+    setTimeout(() => notif.classList.add('show'), 10)
+    setTimeout(() => {
+        notif.classList.remove('show')
+        setTimeout(() => notif.remove(), 300)
+    }, 3000)
 }
-
-// ===== FERMETURE DES MODALS =====
-window.addEventListener('click', (e) => {
-    if (e.target.classList.contains('modal')) {
-        closeEditModal()
-        closeConfirmModal()
-    }
-})
-
-// ===== RACCOURCIS CLAVIER =====
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        closeEditModal()
-        closeConfirmModal()
-    }
-    
-    if (e.ctrlKey && e.key === 'n') {
-        e.preventDefault()
-        if (hasPermission('create')) {
-            document.getElementById('taskInput')?.focus()
-        }
-    }
-})
-
-// ===== AJOUT DE STYLES MANQUANTS =====
-const additionalStyles = `
-    .empty-state {
-        text-align: center;
-        padding: 3rem;
-        background: var(--bg-light);
-        border-radius: var(--radius-md);
-    }
-    
-    .empty-icon {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        opacity: 0.5;
-    }
-    
-    .task-completed {
-        text-decoration: line-through;
-        opacity: 0.7;
-    }
-    
-    .badge {
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.7rem;
-        font-weight: 600;
-    }
-    
-    .creator-badge {
-        background: var(--primary);
-        color: white;
-    }
-    
-    .current-badge {
-        background: var(--success);
-        color: white;
-        margin-left: 0.5rem;
-    }
-    
-    .current-user {
-        border: 2px solid var(--primary);
-    }
-    
-    .user-name-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 0.25rem;
-    }
-    
-    .user-username {
-        color: var(--text-muted);
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .user-meta {
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-        margin-bottom: 0.5rem;
-        flex-wrap: wrap;
-    }
-    
-    .user-footer {
-        display: flex;
-        gap: 1rem;
-        font-size: 0.8rem;
-        color: var(--text-muted);
-        flex-wrap: wrap;
-    }
-    
-    .user-role-badge {
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-    
-    .role-admin {
-        background: #ef476f20;
-        color: #ef476f;
-    }
-    
-    .role-dev {
-        background: #06d6a020;
-        color: #06d6a0;
-    }
-    
-    .role-viewer {
-        background: #4cc9f020;
-        color: #4cc9f0;
-    }
-    
-    .session-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 0.75rem;
-        background: var(--bg-white);
-        border-radius: var(--radius-sm);
-        margin-bottom: 0.5rem;
-    }
-    
-    .session-user {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex: 1;
-    }
-    
-    .session-avatar {
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        font-size: 0.8rem;
-    }
-    
-    .session-time {
-        color: var(--text-muted);
-        font-size: 0.8rem;
-    }
-    
-    .log-type-badge {
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.7rem;
-        text-transform: uppercase;
-    }
-    
-    .log-type-badge.info {
-        background: #4cc9f020;
-        color: #4cc9f0;
-    }
-    
-    .log-type-badge.warning {
-        background: #ffb70320;
-        color: #ffb703;
-    }
-    
-    .log-type-badge.danger {
-        background: #ef476f20;
-        color: #ef476f;
-    }
-`
-
-// Ajouter les styles
-const styleSheet = document.createElement('style')
-styleSheet.textContent = additionalStyles
-document.head.appendChild(styleSheet)
